@@ -17,6 +17,7 @@
  * ------------------------------------------------------------------------- */
 
 const { addFeatures } = require("../../lib/arcgis");
+const { applyCors, handlePreflight } = require("../../lib/cors");
 
 /** Fields this endpoint is willing to write. Anything else is dropped. */
 const ALLOWED_ATTRIBUTES = new Set([
@@ -74,6 +75,9 @@ function sanitizeFeature(feature) {
 }
 
 export default async function handler(req, res) {
+  if (handlePreflight(req, res)) return;
+  applyCors(req, res);
+
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
     return res.status(405).json({ error: "Method not allowed. Use POST." });
