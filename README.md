@@ -1,23 +1,28 @@
-# Facility Token Server
+# REREC Token Server
 
-A small [Next.js](https://nextjs.org/) (Pages Router) backend for the
-**Create Facility** app. It keeps the ArcGIS portal credentials on the server and
-exposes two routes the browser can call instead of talking to
-`development.esriea.com` directly:
+A small [Next.js](https://nextjs.org/) (Pages Router) backend for the REREC
+apps. It keeps the ArcGIS portal credentials on the server and exposes routes the
+browser can call instead of talking to `development.esriea.com` directly:
 
-| Method | Route              | Purpose                                                             |
-| ------ | ------------------ | ------------------------------------------------------------------- |
-| `GET`  | `/api/token`       | Mint a short-lived portal token server-side; return only the token. |
-| `POST` | `/api/addFeatures` | Proxy an edit to the Facilities layer; the token stays server-side. |
+| Method | Route                            | Purpose                                                              |
+| ------ | -------------------------------- | ------------------------------------------------------------------- |
+| `GET`  | `/api/health`                    | Health probe (config + ArcGIS reachability).                        |
+| `GET`  | `/api/token`                     | Mint a short-lived portal token server-side; return only the token. |
+| `POST` | `/api/create-facility-and-project` | Create a facility point + a matching project, tied by a generated `reference_number`. |
+| `POST` | `/api/survey-assignments`        | Assign a surveyor: fill the facility task fields + the project's `surveyed_by`. |
+| `GET`  | `/api/openapi`                   | OpenAPI 3.0 spec (rendered by the Swagger UI at `/docs`).           |
 
-The single page at `/` is documentation for those routes with a live
-"mint a token" button — the frontend is a description of what the server does.
+`/` is a **health status** page; `/docs` is the **Swagger UI** for the routes.
 
 ```
-lib/arcgis.js          credentials, token minting + in-memory cache, addFeatures
+lib/arcgis.js          credentials, token cache, addFeaturesTo / queryLayer / updateFeatures
 pages/api/token.js     GET  /api/token
-pages/api/addFeatures.js POST /api/addFeatures
-pages/index.js         the documentation page
+pages/api/health.js    GET  /api/health
+pages/api/create-facility-and-project.js  POST create facility + project
+pages/api/survey-assignments.js           POST assign a surveyor
+pages/api/openapi.js   GET  /api/openapi  (OpenAPI spec)
+pages/index.js         health status page
+pages/docs.js          Swagger UI
 .env.local             real credentials (gitignored)
 .env.local.example     template
 ```
@@ -39,7 +44,8 @@ copy .env.local.example .env.local
 | Variable                          | Meaning                                                       |
 | --------------------------------- | ------------------------------------------------------------ |
 | `ARCGIS_PORTAL_URL`               | Portal base URL. `generateToken` = `${PORTAL}/sharing/rest/generateToken`. |
-| `ARCGIS_LAYER_URL`                | Facilities layer. `addFeatures` = `${LAYER}/addFeatures`.    |
+| `ARCGIS_FACILITIES_LAYER_URL`     | Facilities layer. `addFeatures` = `${LAYER}/addFeatures`.    |
+| `ARCGIS_PROJECTS_LAYER_URL`       | Projects table. Used by `/api/survey-assignments`. Optional. |
 | `ARCGIS_USERNAME` / `_PASSWORD`   | Account credentials. Prefer a dedicated, least-privilege user. |
 | `ARCGIS_REFERER`                  | Origin the referer-based token is bound to. Set to the app's public origin. |
 | `ARCGIS_TOKEN_EXPIRATION_MINUTES` | Token lifetime; the server re-mints automatically.           |

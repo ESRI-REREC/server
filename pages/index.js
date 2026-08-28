@@ -1,20 +1,29 @@
 import Head from "next/head";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
-export default function Home() {
-  const [token, setToken] = useState(null);
+const COLORS = {
+  ok: "#188a42",
+  degraded: "#b26a00",
+  error: "#d83020",
+};
+
+const STATUS_LABEL = {
+  ok: "All systems operational",
+  degraded: "Degraded",
+  error: "Service unavailable",
+};
+
+export default function Health() {
+  const [health, setHealth] = useState(null);
   const [error, setError] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  async function testToken() {
+  async function load() {
     setLoading(true);
     setError(null);
-    setToken(null);
     try {
-      const res = await fetch("/api/token");
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Request failed");
-      setToken(json);
+      const res = await fetch("/api/health");
+      setHealth(await res.json());
     } catch (err) {
       setError(err.message);
     } finally {
@@ -22,151 +31,123 @@ export default function Home() {
     }
   }
 
+  useEffect(() => {
+    load();
+    const id = setInterval(load, 15000);
+    return () => clearInterval(id);
+  }, []);
+
+  const status = health ? health.status : loading ? "degraded" : "error";
+  const color = COLORS[status] || COLORS.error;
+
   return (
     <>
       <Head>
-        <title>Facility Token Server</title>
-        <meta
-          name="description"
-          content="Server-side ArcGIS token minting and addFeatures proxy for the Create Facility app."
-        />
+        <title>REREC Token Server · Health</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
 
-      <main className="wrap">
-        <header className="hero">
-          <p className="eyebrow">Create Facility · backend</p>
-          <h1>Facility Token Server</h1>
-          <p className="lead">
-            A small Next.js server that stands between the browser and{" "}
-            <code>development.esriea.com</code>. It holds the ArcGIS credentials
-            in environment variables so they never reach the browser, mints
-            short-lived portal tokens, and can post edits to the Facilities layer
-            on the client&apos;s behalf.
-          </p>
-        </header>
-
-        <section>
-          <h2>What it does</h2>
-          <p style={{ color: "var(--muted)" }}>
-            The <code>Create Facility</code> page originally shipped a username
-            and password to every browser (see the app&apos;s{" "}
-            <em>Security</em> section). This server removes that: the credentials
-            live only in <code>.env.local</code> on the server, and the browser
-            talks to two routes instead of talking to the portal directly.
-          </p>
-        </section>
-
-        <section>
-          <h2>Routes</h2>
-
-          <div className="route">
-            <h3>
-              <span className="method get">GET</span>/api/token
-            </h3>
-            <p>
-              Mints (or returns a cached) portal token server-side and returns
-              only the token and its expiry. Replaces <code>mintToken()</code> in
-              the client&apos;s <code>app.js</code> — everything downstream
-              already works off a bare token.
-            </p>
-            <pre>
-              <code>{`{ "token": "AAPT…", "expires": 1735689600000 }`}</code>
-            </pre>
+      <main style={S.wrap}>
+        <div style={S.card}>
+          <div style={S.header}>
+            <div>
+              <p style={S.eyebrow}>REREC · backend</p>
+              <h1 style={S.title}>Token Server</h1>
+            </div>
+            <span style={{ ...S.dot, background: color }} aria-hidden />
           </div>
 
-          <div className="route">
-            <h3>
-              <span className="method post">POST</span>/api/addFeatures
-            </h3>
-            <p>
-              The stricter option: the browser posts the feature here and the
-              server attaches the token and forwards it to the layer&apos;s{" "}
-              <code>/addFeatures</code> endpoint. The token never reaches the
-              browser, and the server validates and whitelists the fields being
-              written.
-            </p>
-            <pre>
-              <code>{`POST /api/addFeatures
-Content-Type: application/json
-
-{
-  "features": [
-    {
-      "geometry": { "x": 4096000, "y": -140200,
-                    "spatialReference": { "wkid": 102100 } },
-      "attributes": {
-        "name": "Westlands Substation",
-        "electrification_status": "ELECTRIFIED",
-        "connection_type": "GRID"
-      }
-    }
-  ]
-}
-
-→ { "addResults": [ { "objectId": 42, "success": true } ] }`}</code>
-            </pre>
-            <p>
-              Writable fields: <code>name</code> (required), <code>id</code>,{" "}
-              <code>electrification_status</code>,{" "}
-              <code>connection_type</code>, <code>electrification_date</code>.
-              Anything else is dropped.
-            </p>
-          </div>
-        </section>
-
-        <section>
-          <h2>Request flow</h2>
-          <ol className="flow">
-            <li>
-              Browser calls <code>GET /api/token</code> (or posts a feature to{" "}
-              <code>/api/addFeatures</code>).
-            </li>
-            <li>
-              Server reads the credentials from the environment and calls{" "}
-              <code>generateToken</code> on the portal, caching the token in
-              memory until a minute before it expires.
-            </li>
-            <li>
-              For <code>/api/addFeatures</code>, the server validates the
-              payload and forwards it to the Facilities layer with the token and
-              a matching <code>Referer</code> header.
-            </li>
-            <li>The portal&apos;s response is relayed back to the browser.</li>
-          </ol>
-        </section>
-
-        <section>
-          <h2>Try it</h2>
-          <div className="demo">
-            <button onClick={testToken} disabled={loading}>
-              {loading ? "Minting…" : "GET /api/token"}
+          <div style={{ ...S.statusRow, color }}>
+            <strong style={S.statusText}>
+              {loading && !health ? "Checking…" : STATUS_LABEL[status] || "Unknown"}
+            </strong>
+            <button style={S.refresh} onClick={load} disabled={loading}>
+              {loading ? "…" : "Refresh"}
             </button>
-            {token && (
-              <div className="result ok">
-                {`token: ${token.token.slice(0, 16)}…\nexpires: ${new Date(
-                  token.expires
-                ).toISOString()}`}
-              </div>
-            )}
-            {error && <div className="result err">error: {error}</div>}
           </div>
-          <div className="note">
-            The token is bound to the origin in <code>ARCGIS_REFERER</code>. For
-            a browser to use a <code>/api/token</code> response directly against
-            the portal, serve the app from that same origin. The{" "}
-            <code>/api/addFeatures</code> proxy has no such constraint — the
-            server sends the matching referer itself.
-          </div>
-        </section>
 
-        <footer>
-          Configure <code>.env.local</code> from{" "}
-          <code>.env.local.example</code>, then <code>npm run dev</code>. See{" "}
-          <code>README.md</code> for wiring the client&apos;s <code>app.js</code>{" "}
-          to these routes.
-        </footer>
+          {error && <div style={S.err}>Could not reach /api/health: {error}</div>}
+
+          {health && (
+            <>
+              <ul style={S.checks}>
+                {health.checks.map((c) => (
+                  <li key={c.name} style={S.check}>
+                    <span style={{ ...S.checkDot, background: c.ok ? COLORS.ok : (c.required ? COLORS.error : COLORS.degraded) }} />
+                    <div>
+                      <div style={S.checkName}>
+                        {c.name.replace(/_/g, " ")}
+                        {!c.required && <span style={S.optional}> · optional</span>}
+                      </div>
+                      <div style={S.checkDetail}>{c.detail}</div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+
+              <div style={S.meta}>
+                <span>Uptime {formatUptime(health.uptimeSeconds)}</span>
+                <span>Checked {new Date(health.time).toLocaleTimeString()}</span>
+              </div>
+            </>
+          )}
+
+          <div style={S.footer}>
+            <a style={S.link} href="/docs">API documentation (Swagger)</a>
+            <a style={S.linkMuted} href="/api/openapi">OpenAPI spec</a>
+          </div>
+        </div>
       </main>
     </>
   );
 }
+
+function formatUptime(s) {
+  if (s == null) return "—";
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  return h ? `${h}h ${m}m` : m ? `${m}m ${sec}s` : `${sec}s`;
+}
+
+const S = {
+  wrap: {
+    minHeight: "100vh",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: "2rem",
+    background: "#f4f5f7",
+    fontFamily: "system-ui, 'Segoe UI', Roboto, sans-serif",
+    color: "#2b2b2b",
+  },
+  card: {
+    width: "100%",
+    maxWidth: 560,
+    background: "#fff",
+    borderRadius: 14,
+    boxShadow: "0 1px 3px rgba(0,0,0,.08), 0 8px 24px rgba(0,0,0,.06)",
+    padding: "1.75rem",
+  },
+  header: { display: "flex", justifyContent: "space-between", alignItems: "flex-start" },
+  eyebrow: { margin: 0, fontSize: ".72rem", letterSpacing: ".08em", textTransform: "uppercase", color: "#8a8f98" },
+  title: { margin: ".15rem 0 0", fontSize: "1.5rem" },
+  dot: { width: 16, height: 16, borderRadius: "50%", marginTop: 4, boxShadow: "0 0 0 4px rgba(0,0,0,.05)" },
+  statusRow: { display: "flex", alignItems: "center", justifyContent: "space-between", margin: "1.25rem 0 .5rem" },
+  statusText: { fontSize: "1.1rem" },
+  refresh: {
+    border: "1px solid #d0d3d8", background: "#fff", color: "#2b2b2b",
+    borderRadius: 8, padding: ".35rem .8rem", fontSize: ".85rem", cursor: "pointer",
+  },
+  err: { background: "#fdecea", color: COLORS.error, padding: ".6rem .8rem", borderRadius: 8, fontSize: ".85rem" },
+  checks: { listStyle: "none", margin: "1rem 0", padding: 0, display: "flex", flexDirection: "column", gap: ".75rem" },
+  check: { display: "flex", gap: ".7rem", alignItems: "flex-start" },
+  checkDot: { width: 10, height: 10, borderRadius: "50%", marginTop: 5, flex: "0 0 auto" },
+  checkName: { fontWeight: 600, fontSize: ".95rem", textTransform: "capitalize" },
+  optional: { fontWeight: 400, color: "#8a8f98", textTransform: "none" },
+  checkDetail: { fontSize: ".82rem", color: "#6b7280", marginTop: 2 },
+  meta: { display: "flex", justifyContent: "space-between", fontSize: ".78rem", color: "#8a8f98", borderTop: "1px solid #eee", paddingTop: ".75rem" },
+  footer: { display: "flex", gap: "1.25rem", marginTop: "1.25rem", borderTop: "1px solid #eee", paddingTop: "1rem" },
+  link: { color: "#0079c1", textDecoration: "none", fontWeight: 600, fontSize: ".9rem" },
+  linkMuted: { color: "#8a8f98", textDecoration: "none", fontSize: ".9rem" },
+};

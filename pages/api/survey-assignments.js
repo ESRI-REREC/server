@@ -94,7 +94,7 @@ export default async function handler(req, res) {
 
   try {
     // 1) Facility with this reference_number.
-    const facQ = await queryLayer(CONFIG.layerUrl, {
+    const facQ = await queryLayer(CONFIG.facilitiesLayerUrl, {
       where: whereRef,
       outFields: "objectid",
     });
@@ -118,7 +118,7 @@ export default async function handler(req, res) {
     if (body.priority && PRIORITY_CODES[body.priority] != null) {
       facAttrs.esritask_priority = PRIORITY_CODES[body.priority];
     }
-    const facUpd = await updateFeatures(CONFIG.layerUrl, [{ attributes: facAttrs }]);
+    const facUpd = await updateFeatures(CONFIG.facilitiesLayerUrl, [{ attributes: facAttrs }]);
     const facErr = editError(facUpd);
     if (facErr) {
       return res.status(502).json({ error: `Facility update failed: ${facErr}`, detail: facUpd });
