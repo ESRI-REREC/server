@@ -24,7 +24,7 @@
  *   500 server misconfigured      502 ArcGIS error (partial writes reported)
  * ------------------------------------------------------------------------- */
 
-const { CONFIG, addFeaturesTo } = require("../../lib/arcgis");
+const { CONFIG, addFeaturesTo, queryLayer } = require("../../lib/arcgis");
 const { applyCors, handlePreflight } = require("../../lib/cors");
 
 /** Facility fields the client may set. Anything else is dropped. */
@@ -45,15 +45,6 @@ const PROJECT_ATTRIBUTES = new Set([
 
 /** Default status for a freshly created project. */
 const DEFAULT_IMPLEMENTATION_STATUS = "Planning";
-
-/** Generate a unique-ish reference number, e.g. REC-1234567/26123. */
-function generateReference() {
-  const now = new Date();
-  const yy = String(now.getFullYear()).slice(2);
-  const base = String(Date.now()).slice(-7);
-  const seq = String(Math.floor(100 + Math.random() * 900));
-  return `REC-${base}/${yy}${seq}`;
-}
 
 function pick(source, allowed) {
   const out = {};
@@ -103,7 +94,23 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "feature.attributes.name is required." });
   }
 
-  const reference = generateReference();
+  // ---- reference_number (client-provided; ties facility + project) ----
+  const rawRef = body.reference_number || (body.project && body.project.reference_number);
+  const reference = typeof rawRef === "string" ? rawRef.trim() : "";
+  if (!reference) {
+    return res.status(400).json({ error: "reference_number is required." });
+  }
+
+  // Reject a reference number already in use by a project.
+  const dupQ = await queryLayer(CONFIG.projectsLayerUrl, {
+    where: `reference_number = '${reference.replace(/'/g, "''")}'`,
+    outFields: "objectid",
+    returnCountOnly: "true",
+  });
+  if (dupQ.error) return res.status(502).json({ error: dupQ.error.message, detail: dupQ.error });
+  if ((dupQ.count || 0) > 0) {
+    return res.status(409).json({ error: `reference_number ${reference} is already in use.` });
+  }
 
   // ---- build the two records ----
   const facilityFeature = {

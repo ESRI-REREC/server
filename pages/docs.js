@@ -1,20 +1,17 @@
 import Head from "next/head";
 import { useEffect } from "react";
 
-/* Swagger UI rendered from the CDN (swagger-ui-dist) against /api/openapi.
- * Kept as a client-only page so the bundle loads in the browser. */
-const SWAGGER_VERSION = "5.17.14";
-
+/* Swagger UI, self-hosted from /public/swagger-ui (vendored on postinstall from
+ * swagger-ui-dist — no CDN). Rendered client-side against /api/openapi. */
 export default function Docs() {
   useEffect(() => {
     const css = document.createElement("link");
     css.rel = "stylesheet";
-    css.href = `https://unpkg.com/swagger-ui-dist@${SWAGGER_VERSION}/swagger-ui.css`;
+    css.href = "/swagger-ui/swagger-ui.css";
     document.head.appendChild(css);
 
     const script = document.createElement("script");
-    script.src = `https://unpkg.com/swagger-ui-dist@${SWAGGER_VERSION}/swagger-ui-bundle.js`;
-    script.crossOrigin = "anonymous";
+    script.src = "/swagger-ui/swagger-ui-bundle.js";
     script.onload = () => {
       if (window.SwaggerUIBundle) {
         window.SwaggerUIBundle({
@@ -39,11 +36,25 @@ export default function Docs() {
       <Head>
         <title>REREC Token Server · API Docs</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        {/* Force a light theme regardless of the OS/browser preference. */}
+        <style>{`
+          :root { color-scheme: light; }
+          html, body { background: #fff; }
+        `}</style>
       </Head>
-      <div style={{ padding: "10px 16px", borderBottom: "1px solid #eee", fontFamily: "system-ui, sans-serif" }}>
-        <a href="/" style={{ color: "#0079c1", textDecoration: "none", fontWeight: 600 }}>← Health</a>
+      <div
+        style={{
+          padding: "10px 16px",
+          borderBottom: "1px solid #eee",
+          background: "#fff",
+          fontFamily: "system-ui, sans-serif",
+        }}
+      >
+        <a href="/" style={{ color: "#0079c1", textDecoration: "none", fontWeight: 600 }}>
+          ← Health
+        </a>
       </div>
-      <div id="swagger-ui" />
+      <div id="swagger-ui" style={{ background: "#fff" }} />
     </>
   );
 }

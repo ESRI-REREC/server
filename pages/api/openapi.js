@@ -89,7 +89,7 @@ const SPEC = {
                   geometry: { x: 4096000, y: -140200, spatialReference: { wkid: 102100 } },
                   attributes: { name: "Westlands Substation", electrification_status: "ELECTRIFIED", connection_type: "GRID" },
                 },
-                project: { funding_year: "2025/2026", initiator_category: "REREC", funding_category: "GoK" },
+                project: { reference_number: "REC-0803425/26001", funding_year: "2025/2026", initiator_category: "REREC", funding_category: "GoK" },
               },
             },
           },
@@ -113,6 +113,7 @@ const SPEC = {
           },
           400: { $ref: "#/components/responses/BadRequest" },
           405: { $ref: "#/components/responses/MethodNotAllowed" },
+          409: { description: "reference_number already in use", content: { "application/json": { schema: { $ref: "#/components/schemas/ErrorBody" } } } },
           502: { $ref: "#/components/responses/Error" },
         },
       },
@@ -211,7 +212,9 @@ const SPEC = {
           },
           project: {
             type: "object",
+            required: ["reference_number"],
             properties: {
+              reference_number: { type: "string", description: "Ties the facility + project. Required; must be unused." },
               funding_year: { type: "string" },
               initiator_category: { type: "string" },
               funding_category: { type: "string" },

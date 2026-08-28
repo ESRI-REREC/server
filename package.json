@@ -7,7 +7,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "copy-swagger-ui": "node scripts/copy-swagger-ui.js",
+    "postinstall": "node scripts/copy-swagger-ui.js"
   },
   "dependencies": {
     "next": "16.3.2",

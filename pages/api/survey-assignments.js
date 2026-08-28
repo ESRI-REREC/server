@@ -110,6 +110,7 @@ export default async function handler(req, res) {
     // 2) Fill in the facility's task fields.
     const facAttrs = {
       objectid: facOid,
+      esritask_type: 0,
       esritask_assignee: surveyor,
       esritask_status: ASSIGNED_STATUS,
       esritask_duedate: dueMs,
