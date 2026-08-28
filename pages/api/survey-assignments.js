@@ -90,7 +90,10 @@ export default async function handler(req, res) {
   if (!reference) return res.status(400).json({ error: "reference_number is required." });
   if (!surveyor) return res.status(400).json({ error: "surveyor is required." });
 
+  // Facilities keep `reference_number`; the Projects layer renamed it to
+  // `project_reference_number`, so each side needs its own where clause.
   const whereRef = `reference_number = '${reference.replace(/'/g, "''")}'`;
+  const whereProjectRef = `project_reference_number = '${reference.replace(/'/g, "''")}'`;
 
   try {
     // 1) Facility with this reference_number.
@@ -127,7 +130,7 @@ export default async function handler(req, res) {
 
     // 3) Project with this reference_number -> set surveyed_by.
     const projQ = await queryLayer(CONFIG.projectsLayerUrl, {
-      where: whereRef,
+      where: whereProjectRef,
       outFields: "objectid",
     });
     if (projQ.error) return res.status(502).json({ error: projQ.error.message, detail: projQ.error });
