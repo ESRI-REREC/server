@@ -6,7 +6,8 @@
  *   1. finds the Facilities feature with the same reference_number and sets
  *      esritask_status to Completed (coded value 3);
  *   2. finds the Projects feature with the same reference_number and sets
- *      survey_approved_by + survey_approved_date.
+ *      survey_approved_by + survey_approved_date, and advances
+ *      implementation_status to "Design" (the survey stage is done).
  *
  * Mirrors /api/survey-assignments: the task status lives on Facilities, the
  * survey approval fields live on the electrification_projects table. Credentials
@@ -31,6 +32,10 @@ const { applyCors, handlePreflight } = require("../../lib/cors");
 
 /** esritask_status coded value for "Completed" (Facilities domain). */
 const COMPLETED_STATUS = 3;
+
+/** implementation_status the project advances to once the survey is approved
+ * (must be a coded value in the projects layer's implementation_status domain). */
+const NEXT_IMPLEMENTATION_STATUS = "Design";
 
 /** "YYYY-MM-DD" (or ISO) -> epoch ms (UTC), or null. */
 function toEpochMs(dateStr) {
@@ -130,6 +135,7 @@ export default async function handler(req, res) {
           objectid: projOid,
           survey_approved_by: approvedBy,
           survey_approved_date: approvedMs,
+          implementation_status: NEXT_IMPLEMENTATION_STATUS,
         },
       },
     ]);
@@ -146,6 +152,7 @@ export default async function handler(req, res) {
         objectId: projOid,
         survey_approved_by: approvedBy,
         survey_approved_date: approvedMs,
+        implementation_status: NEXT_IMPLEMENTATION_STATUS,
       },
     });
   } catch (err) {
