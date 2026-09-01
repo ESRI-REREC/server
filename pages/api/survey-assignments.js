@@ -7,7 +7,8 @@
  *      esritask_assignee, esritask_status (Assigned), esritask_duedate,
  *      esritask_description (and esritask_priority);
  *   2. finds the Projects feature with the same reference_number and sets
- *      surveyed_by.
+ *      surveyed_by, survey_instructions, survey_due_date, survey_assign_by and
+ *      survey_assign_date.
  *
  * Credentials never reach the browser — the server holds the editing token.
  *
@@ -16,9 +17,10 @@
  *     reference_number: "REC-0803425/26001",  // required
  *     surveyor: "skinyanjui_esriea",           // required (esritask_assignee code)
  *     surveyor_name: "Steve",                  // optional (stored in surveyed_by)
+ *     assigned_by: "jmbugua_esriea",           // optional (survey_assign_by code)
  *     priority: "Medium",                      // optional (Low|Medium|High|...)
  *     due_date: "2026-09-30",                  // optional (YYYY-MM-DD)
- *     description: "Survey the access route"   // optional
+ *     description: "Survey the access route"   // optional (survey_instructions)
  *   }
  *
  * Responses:
@@ -85,6 +87,8 @@ export default async function handler(req, res) {
       : surveyor;
   const description =
     typeof body.description === "string" ? body.description.trim() : "";
+  const assignedBy =
+    typeof body.assigned_by === "string" ? body.assigned_by.trim() : "";
   const dueMs = toEpochMs(body.due_date);
 
   if (!reference) return res.status(400).json({ error: "reference_number is required." });
@@ -143,7 +147,16 @@ export default async function handler(req, res) {
     }
 
     const projUpd = await updateFeatures(CONFIG.projectsLayerUrl, [
-      { attributes: { objectid: projOid, surveyed_by: surveyorName } },
+      {
+        attributes: {
+          objectid: projOid,
+          surveyed_by: surveyorName,
+          survey_instructions: description || null,
+          survey_due_date: dueMs,
+          survey_assign_by: assignedBy || null,
+          survey_assign_date: Date.now(),
+        },
+      },
     ]);
     const projErr = editError(projUpd);
     if (projErr) {
